@@ -102,8 +102,8 @@ public class ChatServer {
 			this.socket = socket;
 			try {
 			
-				this.dis = new DataInputStream(socket.getInputStream());//创建数据输入流对象，读取客户端信息
-				this.dos = new DataOutputStream(socket.getOutputStream());//创建数据输出流对象
+				this.dis = new DataInputStream(socket.getInputStream());//创建socket输入流对象，读取客户端信息
+				this.dos = new DataOutputStream(socket.getOutputStream());//创建socket输出流对象
 				isConnected = true;
 			} catch (IOException e) {
 				isConnected = false;
@@ -117,15 +117,15 @@ public class ChatServer {
 				try {
 					// 读取客户端发送的报文
 					String msg = dis.readUTF();
-					String[] parts = msg.split("#");
+					String[] parts = msg.split("#");//将客户端发送过来的消息存放在part数组中
 					switch (parts[0]) {
 					case "LOGIN"://注册
-						String landinfo = parts[1];
+						String landinfo = parts[1];//构建用户信息
 						String landUsername=landinfo.split(":")[0];
 						String landpass=landinfo.split(":")[1];
 						DB insert=new DB();
 						boolean stus=insert.update("INSERT INTO `userinfo` (`username`, `password`) VALUES ('"+landUsername+"', '"+landpass+"')");
-						if(stus){//如果用户名注册成功则返回success，已存在则返回error
+						if(stus){//如果用户注册成功则返回success，已存在则返回error
 						dos.writeUTF("SUCCESS");
 						
 					   }else{
@@ -143,7 +143,7 @@ public class ChatServer {
 						String logininfo = parts[1];
 						String loginUsername=logininfo.split(":")[0];
 						String loginpass=logininfo.split(":")[1];
-						// 如果该用户名已登录，则返回失败报文，否则返回成功报文
+						// 如果该用户名已登录，则返回失败信息，否则返回成功信息
 						if(clientHandlerMap.containsKey(loginUsername)) {
 							dos.writeUTF("FAIL");
 						} else {
@@ -167,7 +167,6 @@ public class ChatServer {
 	           							StringBuffer msgUserList = new StringBuffer();
 	           							msgUserList.append("USERLIST#");
 	           							for(String username : clientHandlerMap.keySet()) {
-	           
 	           								msgUserList.append(username + "#");
 	           							}
 	           							dos.writeUTF(msgUserList.toString());
@@ -186,40 +185,40 @@ public class ChatServer {
 						
 						break;
 					case "LOGOUT"://登出
-						clientHandlerMap.remove(username);
-						String msgLogout="LOGOUT#"+username;
+						clientHandlerMap.remove(username);//在clientHandleMap中移除用户
+						String msgLogout="LOGOUT#"+username;//构建、给客户端发送LOGOUT报文
 						addMsg(username+"已下线");
 						broadcastMsg(username, msgLogout);
-						isConnected=false;
-						socket.close();
+						isConnected=false;//断开连接
+						socket.close();//关闭套接字
 						
 						break;
 					case "TALKTO_ALL"://群聊
-						String msgTalkToAll="TALKTO_ALL#"+username+"#"+parts[1];
-						broadcastMsg(username, msgTalkToAll);
+						String msgTalkToAll="TALKTO_ALL#"+username+"#"+parts[1];//给客户端发送TALKTO_ALL报文和消息内容
+						broadcastMsg(username, msgTalkToAll);//将信息广播发送给其他人
 						break;
 					case "TALKTO"://私聊
-						ClientHandler clientHandler=clientHandlerMap.get(parts[1]);
+						ClientHandler clientHandler=clientHandlerMap.get(parts[1]);//获取客户端的地址
 						if(null!=clientHandler){
-							String msgTalkTo="TALKTO#"+username+"#"+parts[2];
-							clientHandler.dos.writeUTF(msgTalkTo);
+							String msgTalkTo="TALKTO#"+username+"#"+parts[2];//给客户端发送TALKTO报文和消息内容
+							clientHandler.dos.writeUTF(msgTalkTo);//给客户端写入消息
 							clientHandler.dos.flush();
 						}
 						break;
                        case "FILE"://文件
-						ClientHandler file=clientHandlerMap.get(parts[1]);
+						ClientHandler file=clientHandlerMap.get(parts[1]);//获取文件
 						if(null!=file){
-							String msgTalkTo="FILE#"+parts[2];
+							String msgTalkTo="FILE#"+parts[2];//给客户端发送FILE报文和文件
 							int length = 0;
 								try{
-									file.dos.writeUTF(msgTalkTo);
-									long fileLength = dis.readLong();
+									file.dos.writeUTF(msgTalkTo);//给客户端写入消息
+									long fileLength = dis.readLong();//文件长度
 									file.dos.writeLong(fileLength);
 									  
 									byte[] sendByte = new byte[1024];
 								     
-								    while((length = dis.read(sendByte, 0, sendByte.length))!=-1){
-								        file.dos.write(sendByte,0,length);
+								    while((length = dis.read(sendByte, 0, sendByte.length))!=-1){//将文件中的数据存入sendbyte数组中，再将sendbyte中的每一个分别赋值给length。如果还有值，那么length就不等于-1，那么就会循环的继续读取，直到读取完值为止。
+								        file.dos.write(sendByte,0,length);//将文件内容写入sendbyte数组中
 								        file.dos.flush(); 
 								    }  
 										
@@ -254,9 +253,9 @@ public class ChatServer {
 		 */
 		private void broadcastMsg(String fromUsername, String msg) throws IOException{
 			for(String toUserName : clientHandlerMap.keySet()) {
-				if(fromUsername.equals(toUserName) == false) {
-					DataOutputStream dos = clientHandlerMap.get(toUserName).dos;
-					dos.writeUTF(msg);
+				if(fromUsername.equals(toUserName) == false) {//如果不是私聊
+					DataOutputStream dos = clientHandlerMap.get(toUserName).dos;//创建数据输出流
+					dos.writeUTF(msg);//给客户端写消息
 					dos.flush();
 				}
 			}
