@@ -56,17 +56,17 @@ public class ChatClient {
 	public void Start() {
 		if(thread==null){
 			 
-		thread=new Thread(){
-		@Override
-			public void run() {
-			// TODO Auto-generated method stub
-				super.run();
-			// 连接服务器并登录
-				while(isLogged) {
+			thread=new Thread(){
+				@Override
+				public void run() {
+				// TODO Auto-generated method stub
+					super.run();
+					// 连接服务器并登录
+					while(isLogged) {
 							try {
-								String msg = dis.readUTF();
+								String msg = dis.readUTF();//客户端读服务器发来消息
 							
-								String[] parts = msg.split("#");
+								String[] parts = msg.split("#");//part数组存储从服务器读取到的消息
 								switch (parts[0]) {
 								// 处理服务器发来的用户列表报文
 								case "USERLIST":
@@ -89,12 +89,10 @@ public class ChatClient {
 									break;
 								//接收私聊消息
 								case "TALKTO":
-									
 									addMsg(parts[1]+"跟我说:"+parts[2]);
 									break;
 								//接受文件
-                                 case "FILE":
-//                              
+                                 case "FILE":                            
                                  int result = JOptionPane.showConfirmDialog(
                                              jc,
                                              "确认接受文件？",
@@ -102,19 +100,19 @@ public class ChatClient {
                                              JOptionPane.YES_NO_CANCEL_OPTION);
                                 	  if(result==0){
                                 	  	   JFileChooser fileChooser=new JFileChooser();
-                                	  	   fileChooser.setCurrentDirectory(new File(""));
-                                	  	   fileChooser.setFileSelectionMode(JFileChooser.SAVE_DIALOG | JFileChooser.DIRECTORIES_ONLY);
-                                	  	   int results = fileChooser.showOpenDialog(jc);
-                                	  	   if(results==0){
-                                				long fileLength = dis.readLong();
-                                		        File file = new File(fileChooser.getSelectedFile().getPath()+"/"+parts[1]);
-                                		        OutputStream  fos = new FileOutputStream(file);
-                                		        byte[] bytes = new byte[1024];
+                                	  	   fileChooser.setCurrentDirectory(new File(""));//设置默认目录
+                                	  	   fileChooser.setFileSelectionMode(JFileChooser.SAVE_DIALOG | JFileChooser.DIRECTORIES_ONLY);//仅显示目录
+                                	  	   int results = fileChooser.showOpenDialog(jc);//打开
+                                	  	   if(results==0){//处理文件流
+                                				long fileLength = dis.readLong();//读取文件长度
+                                		        File file = new File(fileChooser.getSelectedFile().getPath()+"/"+parts[1]);//确定文件保存位置
+                                		        OutputStream  fos = new FileOutputStream(file);//创建文件输出流
+                                		        byte[] bytes = new byte[1024];//新建一个byte存放文件
                                 		        int length = 0;
-                                		        while((length = dis.read(bytes, 0, bytes.length))>=-1) {
-                                		             fos.write(bytes, 0, length);
+                                		        while((length = dis.read(bytes, 0, bytes.length))>=-1) {//将文件中的数据存入bytes数组中，循环的继续读取数据，直到读取完值为止。
+                                		             fos.write(bytes, 0, length);//将字符流写入文件
                                 		             fos.flush();
-                                		             if(length<bytes.length){
+                                		             if(length<bytes.length){//文件长度小于byte数组长度即传输完成
                                 		                  fos.close();
                                                           addMsg("文件完成");
                                 		             }
@@ -139,7 +137,7 @@ public class ChatClient {
 		}
 	
 	public void sendChatMag(String text,String toUsername,boolean isSelected){//发送消息
-		String msgChat=null;
+		String msgChat=null;//构建消息报文
 		if(!isSelected){//如果不选择私聊则所有人都可接受消息
 			msgChat="TALKTO_ALL#"+text;	
 	
@@ -147,10 +145,10 @@ public class ChatClient {
 		if(isSelected){//选择私聊则只能特定的人接受该消息
 			msgChat="TALKTO#"+toUsername+"#"+text;
 		}
-		if(null!=msgChat){//文本框不为空，为发送消息
+		if(null!=msgChat){//选择特定的人
 			try {
-				addMsg("我："+text);
-				dos.writeUTF(msgChat);//数据输出为msgchat中的消息
+				addMsg("我："+text);//在文本区发送一条消息
+				dos.writeUTF(msgChat);//给服务器端发送报文和消息
 				dos.flush();//刷新
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -218,46 +216,45 @@ public class ChatClient {
 	}
 	public void sendfile(final String path,final String toUsername){//发送文件
 		new Thread(){
-		public void	run(){
-			
-    		
-		 int length = 0;
-		File file = new File(path);
-		try{
-		dos.writeUTF("FILE#"+toUsername+"#"+file.getName());
-    	dos.writeLong(file.length());
-    	dos.flush();
-       InputStream fin = new FileInputStream(file);
-       byte[] sendByte = new byte[1024];
-        while((length = fin.read(sendByte, 0, sendByte.length))!=-1){
+			public void	run(){
+				int length = 0;//定义文件长度
+				File file = new File(path);
+				try{
+					dos.writeUTF("FILE#"+toUsername+"#"+file.getName());//构建、给服务器发送文件报文
+					dos.writeLong(file.length());//给服务器发送文件长度
+					dos.flush();
+					InputStream fin = new FileInputStream(file);//构建文件输出流
+					byte[] sendByte = new byte[1024];
+					while((length = fin.read(sendByte, 0, sendByte.length))!=-1){//将文件中的数据存入sendbyte数组中，再将sendbyte中的每一个分别赋值给length。如果还有值，那么length就不等于-1，那么就会循环的继续读取，直到读取完值为止。
         	
-        	   dos.write(sendByte,0,length);
-               dos.flush();
+						dos.write(sendByte,0,length);//将文件内容写入sendbyte数组中
+						dos.flush();
                
-        }  
-             addMsg("文件发送成功");
-        fin.close();
-		}catch (Exception e) {
-			addMsg("文件发送失败....");
-			e.printStackTrace();
-			// TODO: handle exception
-		}}
+					}  
+				addMsg("文件发送成功");
+				fin.close();
+				}catch (Exception e) {
+					addMsg("文件发送失败....");
+					e.printStackTrace();
+					// TODO: handle exception
+				}
+			}
 		}.start();
 	}
 	public void landout(){//登出
-		String msgLogin = "LOGOUT#";
+		String msgLogin = "LOGOUT#";//构建、发送登出报文
 		try {
 			if(dos!=null){
 			dos.writeUTF(msgLogin);
-			dos.flush();}
+			dos.flush();
+			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}	
 	}
 
-	public void addMsg(String msg) {//发送消息
-		// 在文本区中添加一条消息，并加上换行
+	public void addMsg(String msg) {// 在文本区中添加一条消息，并加上换行
 		textAreaRecord.append(msg + "\n");
 				// 自动滚动到文本区的最后一行
 		textAreaRecord.setCaretPosition(textAreaRecord.getText().length());
